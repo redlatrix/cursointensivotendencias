@@ -14,7 +14,7 @@ class Libro(models.Model):
     autor = models.CharField(max_length=100)
     año = models.DateField()
     stock = models.IntegerField(default=0)
-    
+
     estante = models.ForeignKey(Estante, on_delete=models.SET_NULL, null=True, blank=True, related_name='libros')
 
     def __str__(self):
