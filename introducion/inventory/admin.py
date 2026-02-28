@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import Estante, Libro
 
-# Register your models here.
+admin.site.register(Estante)
+admin.site.register(Libro)
