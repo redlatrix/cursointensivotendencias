@@ -38,8 +38,14 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'inventory',
+    'drf_spectacular',
+    'resource'
 ]
+
+REST_FRAMEWORK = {
+    # Esto le dice a DRF que use drf-spectacular para generar el esquema
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

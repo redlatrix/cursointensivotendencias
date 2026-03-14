@@ -5,3 +5,5 @@ class ResourceSerializers(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = '__all__'
+
+        

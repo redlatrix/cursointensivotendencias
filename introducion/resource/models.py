@@ -1,6 +1,6 @@
 from django.db import models
 
 # Create your models here.
-class Resource(models.model):
+class Resource(models.Model):
     name = models.TextField("Name")
     
