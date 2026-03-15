@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -39,12 +40,48 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'drf_spectacular',
-    'resource'
+    'authentication',
+    'resource',
 ]
 
 REST_FRAMEWORK = {
     # Esto le dice a DRF que use drf-spectacular para generar el esquema
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': (
+        'drf_spectacular.openapi.AutoSchema'
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # Opcional: Solo usuarios autenticados pueden usar la API por defecto
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'AUTH_HEADER_TYPES': ('Bearer',), # Esto define que usarás "Bearer <token>"
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Gestión de Recursos API',
+    'DESCRIPTION': 'API para salas, equipos y herramientas',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    # ESTO ACTIVA EL BOTÓN DE LOCK/AUTHORIZE
+    'COMPONENT_SPLIT_PATCH': True,
+    'SECURITY': [{
+        'jwtAuth': [],
+    }],
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {
+            'jwtAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    }
 }
 
 MIDDLEWARE = [
