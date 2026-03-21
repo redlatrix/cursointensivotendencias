@@ -1,19 +1,12 @@
 from rest_framework import serializers
 
-from .models import Assignment, Resource, ResourceAssignee, ResourceStatus, ResourceType
+from .models import Assignment, Resource, ResourceStatus, ResourceType
 
 
 class ResourceTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResourceType
         fields = "__all__"
-
-
-class ResourceAssigneeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ResourceAssignee
-        fields = "__all__"
-
 
 class ResourceSerializer(serializers.ModelSerializer):
     type = serializers.PrimaryKeyRelatedField(

@@ -1,11 +1,10 @@
 from rest_framework import permissions, viewsets
 from authentication.permissions import IsSupervisorOrAdmin
-from .models import Resource, ResourceType, Assignment, ResourceAssignee
+from .models import Resource, ResourceType, Assignment
 from .serializers import (
     ResourceSerializers, 
     ResourceTypeSerializer, 
-    AssignmentSerializer, 
-    ResourceAssigneeSerializer
+    AssignmentSerializer
 )
 
 class ResourceViewSet(viewsets.ModelViewSet):
@@ -13,9 +12,8 @@ class ResourceViewSet(viewsets.ModelViewSet):
     serializer_class = ResourceSerializers
 
     def get_permissions(self):
-        if self.action in ["destroy", "update", "partial_update"]:
+        if self.action in ["create", "destroy", "update", "partial_update"]:
             return [IsSupervisorOrAdmin()]
-
         return [permissions.IsAuthenticated()]
 
 class ResourceTypeViewSet(viewsets.ModelViewSet):
@@ -23,17 +21,15 @@ class ResourceTypeViewSet(viewsets.ModelViewSet):
     serializer_class = ResourceTypeSerializer
 
     def get_permissions(self):
-        if self.action in ["destroy", "update", "partial_update"]:
+        if self.action in ["create", "destroy", "update", "partial_update"]:
             return [IsSupervisorOrAdmin()]
-
         return [permissions.IsAuthenticated()]
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
-    permission_classes = [permissions.IsAuthenticated] 
-
-class ResourceAssigneeViewSet(viewsets.ModelViewSet):
-    queryset = ResourceAssignee.objects.all()
-    serializer_class = ResourceAssigneeSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.action in ["create", "destroy", "update", "partial_update"]:
+            return [IsSupervisorOrAdmin()]
+        return [permissions.IsAuthenticated()]

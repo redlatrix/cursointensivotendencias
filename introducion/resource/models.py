@@ -1,10 +1,10 @@
 from datetime import date
 from uuid import uuid4
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-
 
 class ResourceCategory(models.TextChoices):
     PHYSICAL = "PHYSICAL", "Fisico"
@@ -29,19 +29,6 @@ class ResourceType(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
-
-
-class ResourceAssignee(models.Model):
-    name = models.CharField(max_length=120)
-    position = models.CharField(max_length=120)
-    area = models.CharField(max_length=100)
-    email = models.EmailField(unique=True)
-
-    class Meta:
-        ordering = ("name",)
-
-    def __str__(self):
-        return f"{self.name} - {self.area}"
 
 
 class Resource(models.Model):
@@ -96,9 +83,10 @@ class Assignment(models.Model):
         related_name="assignments",
     )
     assignee = models.ForeignKey(
-        ResourceAssignee,
-        on_delete=models.PROTECT,
+        settings.AUTH_USER_MODEL,  
+        on_delete=models.PROTECT, 
         related_name="assignments",
+        null=True,
     )
     start_date = models.DateField(default=date.today)
     expected_return_date = models.DateField(blank=True, null=True)

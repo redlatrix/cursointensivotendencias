@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Assignment, Resource, ResourceAssignee, ResourceType
+from .models import Assignment, Resource, ResourceType
 
 
 @admin.register(ResourceType)
@@ -8,13 +8,6 @@ class ResourceTypeAdmin(admin.ModelAdmin):
     list_display = ("name", "category")
     list_filter = ("category",)
     search_fields = ("name", "description")
-
-
-@admin.register(ResourceAssignee)
-class ResourceAssigneeAdmin(admin.ModelAdmin):
-    list_display = ("name", "position", "area", "email")
-    list_filter = ("area", "position")
-    search_fields = ("name", "email", "area")
 
 
 @admin.register(Resource)
@@ -34,6 +27,6 @@ class AssignmentAdmin(admin.ModelAdmin):
         "expected_return_date",
         "returned_at",
     )
-    list_filter = ("start_date", "returned_at", "resource__status", "assignee__area")
+    list_filter = ("start_date", "returned_at", "resource__status", "assignee__groups")
     search_fields = ("resource__code", "resource__name", "assignee__name", "assignee__email")
     autocomplete_fields = ("resource", "assignee")
