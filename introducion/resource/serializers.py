@@ -16,6 +16,13 @@ class ResourceAssigneeSerializer(serializers.ModelSerializer):
 
 
 class ResourceSerializer(serializers.ModelSerializer):
+    type = serializers.PrimaryKeyRelatedField(
+        queryset=ResourceType.objects.all(),
+        error_messages={
+            "does_not_exist": "El tipo de recurso no existe.",
+            "incorrect_type": "El tipo de recurso debe enviarse como un ID valido.",
+        },
+    )
     type_name = serializers.CharField(source="type.name", read_only=True)
     has_active_assignment = serializers.BooleanField(read_only=True)
 
