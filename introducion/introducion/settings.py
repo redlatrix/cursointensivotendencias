@@ -114,8 +114,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'introducion.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
 
 DATABASES = {
     'default': {
