@@ -8,8 +8,8 @@ from authentication.permissions import IsSupervisorOrAdmin
 from introducion.choises import DependenceChoices
 
 
-class ProfileModelTests(TestCase):
-    def test_profile_defaults_and_str(self):
+class PruebasModeloPerfil(TestCase):
+    def test_perfil_tiene_dependencia_por_defecto_y_str_correcto(self):
         user = User.objects.create_user(username="ana", password="StrongPass123!")
         profile = Profile.objects.create(user=user, identitydocument="12345")
 
@@ -17,17 +17,17 @@ class ProfileModelTests(TestCase):
         self.assertEqual(str(profile), "Perfil de ana")
 
 
-class IsSupervisorOrAdminPermissionTests(TestCase):
+class PruebasPermisoSupervisorOAdmin(TestCase):
     def setUp(self):
         self.permission = IsSupervisorOrAdmin()
         self.factory = APIRequestFactory()
 
-    def test_denies_anonymous_user(self):
+    def test_deniega_usuario_anonimo(self):
         request = self.factory.get("/api/resource/")
         request.user = AnonymousUser()
         self.assertFalse(self.permission.has_permission(request, view=None))
 
-    def test_allows_user_in_supervisor_group(self):
+    def test_permite_usuario_del_grupo_supervisor(self):
         user = User.objects.create_user(username="super1", password="StrongPass123!")
         supervisor_group = Group.objects.create(name="Supervisor")
         user.groups.add(supervisor_group)
@@ -37,7 +37,7 @@ class IsSupervisorOrAdminPermissionTests(TestCase):
 
         self.assertTrue(self.permission.has_permission(request, view=None))
 
-    def test_denies_user_without_allowed_groups(self):
+    def test_deniega_usuario_sin_grupos_permitidos(self):
         user = User.objects.create_user(username="normal1", password="StrongPass123!")
         standard_group = Group.objects.create(name="Estandar")
         user.groups.add(standard_group)
@@ -48,8 +48,8 @@ class IsSupervisorOrAdminPermissionTests(TestCase):
         self.assertFalse(self.permission.has_permission(request, view=None))
 
 
-class AuthenticationApiTests(APITestCase):
-    def test_register_creates_user_and_hashes_password(self):
+class PruebasApiAutenticacion(APITestCase):
+    def test_registro_crea_usuario_y_encripta_password(self):
         payload = {
             "username": "nuevo_user",
             "password": "SecurePass123!",
@@ -67,11 +67,11 @@ class AuthenticationApiTests(APITestCase):
         self.assertTrue(user.check_password("SecurePass123!"))
         self.assertEqual(user.email, "nuevo@example.com")
 
-    def test_me_requires_authentication(self):
+    def test_me_requiere_autenticacion(self):
         response = self.client.get("/api/authentication/me/")
         self.assertEqual(response.status_code, 401)
 
-    def test_me_returns_logged_user_data_with_jwt(self):
+    def test_me_retorna_datos_del_usuario_autenticado_con_jwt(self):
         User.objects.create_user(
             username="jwt_user",
             password="SecurePass123!",
