@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
+
 class ResourceCategory(models.TextChoices):
     PHYSICAL = "PHYSICAL", "Fisico"
     DIGITAL = "DIGITAL", "Digital"
@@ -83,8 +84,8 @@ class Assignment(models.Model):
         related_name="assignments",
     )
     assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL,  
-        on_delete=models.PROTECT, 
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
         related_name="assignments",
         null=True,
     )
@@ -109,14 +110,14 @@ class Assignment(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.resource.code} -> {self.assignee.name} ({self.start_date})"
+        assignee_name = self.assignee.get_full_name() or self.assignee.username
+        return f"{self.resource.code} -> {assignee_name} ({self.start_date})"
 
     def clean(self):
         if self.expected_return_date and self.expected_return_date < self.start_date:
             raise ValidationError(
                 {"expected_return_date": "La fecha esperada no puede ser menor al inicio."}
             )
-
         if self.returned_at and self.returned_at < self.start_date:
             raise ValidationError(
                 {"returned_at": "La fecha de devolucion no puede ser menor al inicio."}

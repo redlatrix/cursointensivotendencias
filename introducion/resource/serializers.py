@@ -8,6 +8,7 @@ class ResourceTypeSerializer(serializers.ModelSerializer):
         model = ResourceType
         fields = "__all__"
 
+
 class ResourceSerializer(serializers.ModelSerializer):
     type = serializers.PrimaryKeyRelatedField(
         queryset=ResourceType.objects.all(),
@@ -63,7 +64,7 @@ class ResourceSerializer(serializers.ModelSerializer):
 
 class AssignmentSerializer(serializers.ModelSerializer):
     resource_code = serializers.CharField(source="resource.code", read_only=True)
-    assignee_name = serializers.CharField(source="assignee.name", read_only=True)
+    assignee_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Assignment
@@ -78,6 +79,11 @@ class AssignmentSerializer(serializers.ModelSerializer):
             "returned_at",
             "notes",
         )
+
+    def get_assignee_name(self, obj):
+        if obj.assignee:
+            return obj.assignee.get_full_name() or obj.assignee.username
+        return None
 
     def validate(self, attrs):
         instance = self.instance
@@ -125,11 +131,3 @@ class AssignmentSerializer(serializers.ModelSerializer):
             assignment.resource.save(update_fields=["status"])
 
         return assignment
-
-
-class ResourceSerializers(ResourceSerializer):
-    """
-    Alias para mantener compatibilidad con imports existentes del proyecto.
-    """
-
-    pass

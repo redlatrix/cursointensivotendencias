@@ -1,35 +1,58 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+
 from rest_framework import permissions, viewsets
-from authentication.permissions import IsSupervisorOrAdmin
-from .models import Resource, ResourceType, Assignment
-from .serializers import (
-    ResourceSerializers, 
-    ResourceTypeSerializer, 
-    AssignmentSerializer
-)
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
-class ResourceViewSet(viewsets.ModelViewSet):
-    queryset = Resource.objects.all()
-    serializer_class = ResourceSerializers
+from authentication.permissions import IsAdministrador
 
-    def get_permissions(self):
-        if self.action in ["create", "destroy", "update", "partial_update"]:
-            return [IsSupervisorOrAdmin()]
-        return [permissions.IsAuthenticated()]
+from .models import Assignment, Resource, ResourceType
+from .serializers import AssignmentSerializer, ResourceSerializer, ResourceTypeSerializer
+
 
 class ResourceTypeViewSet(viewsets.ModelViewSet):
     queryset = ResourceType.objects.all()
     serializer_class = ResourceTypeSerializer
 
     def get_permissions(self):
-        if self.action in ["create", "destroy", "update", "partial_update"]:
-            return [IsSupervisorOrAdmin()]
+        if self.action in ("create", "destroy", "update", "partial_update"):
+            return [IsAdministrador()]
         return [permissions.IsAuthenticated()]
 
-class AssignmentViewSet(viewsets.ModelViewSet):
-    queryset = Assignment.objects.all()
-    serializer_class = AssignmentSerializer
-    
+
+class ResourceViewSet(viewsets.ModelViewSet):
+    serializer_class = ResourceSerializer
+
     def get_permissions(self):
-        if self.action in ["create", "destroy", "update", "partial_update"]:
-            return [IsSupervisorOrAdmin()]
+        if self.action in ("create", "destroy", "update", "partial_update"):
+            return [IsAdministrador()]
         return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.groups.filter(name='Empleado').exists():
+            return Resource.objects.filter(
+                assignments__assignee=user,
+                assignments__returned_at__isnull=True,
+            ).distinct()
+        return Resource.objects.all()
+
+    def perform_destroy(self, instance):
+        try:
+            instance.delete()
+        except DjangoValidationError as e:
+            raise DRFValidationError(e.message)
+
+
+class AssignmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AssignmentSerializer
+
+    def get_permissions(self):
+        if self.action in ("create", "destroy", "update", "partial_update"):
+            return [IsAdministrador()]
+        return [permissions.IsAuthenticated()]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.groups.filter(name='Empleado').exists():
+            return Assignment.objects.filter(assignee=user)
+        return Assignment.objects.all()

@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     'resource',
 ]
 
+AUTH_USER_MODEL = 'authentication.CustomUser'
+
 REST_FRAMEWORK = {
     # Esto le dice a DRF que use drf-spectacular para generar el esquema
     'DEFAULT_SCHEMA_CLASS': (

@@ -1,20 +1,12 @@
 from django.contrib import admin
-from .models import Profile
+from django.contrib.auth.admin import UserAdmin
 
-@admin.register(Profile)
-class ProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'identitydocument', 'dependence', 'phonenumber')
-    list_filter = ('dependence',)
-    search_fields = ('user__username', 'identitydocument')
+from .models import CustomUser
 
-    fieldsets = (
-        ('Usuario Vinculado', {
-            'fields': ('user', 'identitydocument')
-        }),
-        ('Información de Contacto', {
-            'fields': ('phonenumber', 'dependence', 'avatar')
-        }),
-        ('Información Adicional', {
-            'fields': ('bibliography',),
-        }),
+
+@admin.register(CustomUser)
+class CustomUserAdmin(UserAdmin):
+    fieldsets = UserAdmin.fieldsets + (
+        ('Datos del Empleado', {'fields': ('cargo', 'area')}),
     )
+    list_display = ('username', 'email', 'first_name', 'last_name', 'cargo', 'area', 'is_staff')

@@ -1,98 +1,210 @@
-from django.contrib.auth.models import Group, User
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AnonymousUser, Group
 from django.test import TestCase
+from rest_framework import status
 from rest_framework.test import APIRequestFactory, APITestCase
 
-from authentication.models import Profile
-from authentication.permissions import IsSupervisorOrAdmin
-from introducion.choises import DependenceChoices
+from authentication.models import CustomUser
+from authentication.permissions import IsAdministrador
 
 
-class PruebasModeloPerfil(TestCase):
-    def test_perfil_tiene_dependencia_por_defecto_y_str_correcto(self):
-        user = User.objects.create_user(username="ana", password="StrongPass123!")
-        profile = Profile.objects.create(user=user, identitydocument="12345")
+class PruebasModeloCustomUser(TestCase):
+    def test_campos_cargo_y_area_se_guardan_correctamente(self):
+        user = CustomUser.objects.create_user(
+            username="empleado1",
+            password="Pass1234!",
+            cargo="Docente",
+            area="Sistemas",
+        )
+        user.refresh_from_db()
+        self.assertEqual(user.cargo, "Docente")
+        self.assertEqual(user.area, "Sistemas")
 
-        self.assertEqual(profile.dependence, DependenceChoices.SYSTEMS)
-        self.assertEqual(str(profile), "Perfil de ana")
+    def test_usuario_nuevo_queda_en_grupo_empleado_por_signal(self):
+        user = CustomUser.objects.create_user(
+            username="empleado2",
+            password="Pass1234!",
+        )
+        grupos = list(user.groups.values_list("name", flat=True))
+        self.assertIn("Empleado", grupos)
+
+    def test_superusuario_no_queda_en_grupo_empleado(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="root",
+            password="Pass1234!",
+        )
+        grupos = list(superuser.groups.values_list("name", flat=True))
+        self.assertNotIn("Empleado", grupos)
 
 
-class PruebasPermisoSupervisorOAdmin(TestCase):
+class PruebasPermisoIsAdministrador(TestCase):
     def setUp(self):
-        self.permission = IsSupervisorOrAdmin()
+        self.permission = IsAdministrador()
         self.factory = APIRequestFactory()
 
     def test_deniega_usuario_anonimo(self):
-        request = self.factory.get("/api/resource/")
+        request = self.factory.get("/api/resource/resources/")
         request.user = AnonymousUser()
         self.assertFalse(self.permission.has_permission(request, view=None))
 
-    def test_permite_usuario_del_grupo_supervisor(self):
-        user = User.objects.create_user(username="super1", password="StrongPass123!")
-        supervisor_group = Group.objects.create(name="Supervisor")
-        user.groups.add(supervisor_group)
-
-        request = self.factory.get("/api/resource/")
+    def test_deniega_empleado_sin_grupo_administrador(self):
+        user = CustomUser.objects.create_user(username="emp", password="Pass1234!")
+        request = self.factory.get("/api/resource/resources/")
         request.user = user
-
-        self.assertTrue(self.permission.has_permission(request, view=None))
-
-    def test_deniega_usuario_sin_grupos_permitidos(self):
-        user = User.objects.create_user(username="normal1", password="StrongPass123!")
-        standard_group = Group.objects.create(name="Estandar")
-        user.groups.add(standard_group)
-
-        request = self.factory.get("/api/resource/")
-        request.user = user
-
         self.assertFalse(self.permission.has_permission(request, view=None))
 
+    def test_permite_usuario_en_grupo_administrador(self):
+        user = CustomUser.objects.create_user(username="adm", password="Pass1234!")
+        grupo, _ = Group.objects.get_or_create(name="Administrador")
+        user.groups.add(grupo)
+        request = self.factory.get("/api/resource/resources/")
+        request.user = user
+        self.assertTrue(self.permission.has_permission(request, view=None))
 
-class PruebasApiAutenticacion(APITestCase):
-    def test_registro_crea_usuario_y_encripta_password(self):
-        payload = {
-            "username": "nuevo_user",
-            "password": "SecurePass123!",
-            "email": "nuevo@example.com",
-            "first_name": "Nuevo",
-            "last_name": "Usuario",
-        }
+    def test_permite_superusuario_sin_grupo(self):
+        superuser = CustomUser.objects.create_superuser(
+            username="root2", password="Pass1234!"
+        )
+        request = self.factory.get("/api/resource/resources/")
+        request.user = superuser
+        self.assertTrue(self.permission.has_permission(request, view=None))
 
-        response = self.client.post("/api/authentication/register/", payload, format="json")
 
-        self.assertEqual(response.status_code, 201)
-        self.assertNotIn("password", response.data)
-
-        user = User.objects.get(username="nuevo_user")
-        self.assertTrue(user.check_password("SecurePass123!"))
-        self.assertEqual(user.email, "nuevo@example.com")
-
-    def test_me_requiere_autenticacion(self):
-        response = self.client.get("/api/authentication/me/")
-        self.assertEqual(response.status_code, 401)
-
-    def test_me_retorna_datos_del_usuario_autenticado_con_jwt(self):
-        User.objects.create_user(
-            username="jwt_user",
-            password="SecurePass123!",
-            email="jwt@example.com",
-            first_name="Jwt",
-            last_name="User",
+class PruebasApiLogin(APITestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            username="login_user", password="Pass1234!"
         )
 
-        login_response = self.client.post(
+    def test_login_retorna_tokens_jwt(self):
+        response = self.client.post(
             "/api/authentication/login/",
-            {"username": "jwt_user", "password": "SecurePass123!"},
+            {"username": "login_user", "password": "Pass1234!"},
             format="json",
         )
-        self.assertEqual(login_response.status_code, 200)
-        self.assertIn("access", login_response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
 
-        access_token = login_response.data["access"]
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {access_token}")
+    def test_login_con_credenciales_incorrectas_retorna_401(self):
+        response = self.client.post(
+            "/api/authentication/login/",
+            {"username": "login_user", "password": "wrongpass"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-        me_response = self.client.get("/api/authentication/me/")
 
-        self.assertEqual(me_response.status_code, 200)
-        self.assertEqual(me_response.data["username"], "jwt_user")
-        self.assertEqual(me_response.data["email"], "jwt@example.com")
+class PruebasApiMe(APITestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            username="me_user",
+            password="Pass1234!",
+            email="me@example.com",
+            cargo="Ingeniero",
+            area="TI",
+        )
+
+    def test_me_sin_token_retorna_401(self):
+        response = self.client.get("/api/authentication/me/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_me_retorna_datos_del_usuario_autenticado(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/authentication/me/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["username"], "me_user")
+        self.assertEqual(response.data["email"], "me@example.com")
+        self.assertEqual(response.data["cargo"], "Ingeniero")
+        self.assertEqual(response.data["area"], "TI")
+
+
+class PruebasApiRegistroEmpleados(APITestCase):
+    def setUp(self):
+        self.superuser = CustomUser.objects.create_superuser(
+            username="admin", password="Pass1234!"
+        )
+        self.empleado = CustomUser.objects.create_user(
+            username="empleado_base", password="Pass1234!"
+        )
+        self.payload = {
+            "username": "nuevo_emp",
+            "password": "Pass1234!",
+            "email": "nuevo@example.com",
+            "first_name": "Nuevo",
+            "last_name": "Empleado",
+            "cargo": "Auxiliar",
+            "area": "Biblioteca",
+        }
+
+    def test_registro_sin_autenticacion_retorna_401(self):
+        response = self.client.post(
+            "/api/authentication/register/", self.payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_empleado_no_puede_registrar_usuarios(self):
+        self.client.force_authenticate(user=self.empleado)
+        response = self.client.post(
+            "/api/authentication/register/", self.payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_puede_registrar_empleado_con_cargo_y_area(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.post(
+            "/api/authentication/register/", self.payload, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", response.data)
+        user = CustomUser.objects.get(username="nuevo_emp")
+        self.assertEqual(user.cargo, "Auxiliar")
+        self.assertEqual(user.area, "Biblioteca")
+        self.assertTrue(user.check_password("Pass1234!"))
+
+    def test_empleado_creado_queda_en_grupo_empleado(self):
+        self.client.force_authenticate(user=self.superuser)
+        self.client.post(
+            "/api/authentication/register/", self.payload, format="json"
+        )
+        user = CustomUser.objects.get(username="nuevo_emp")
+        self.assertIn("Empleado", list(user.groups.values_list("name", flat=True)))
+
+
+class PruebasApiCrudEmpleados(APITestCase):
+    def setUp(self):
+        self.superuser = CustomUser.objects.create_superuser(
+            username="admin2", password="Pass1234!"
+        )
+        self.empleado = CustomUser.objects.create_user(
+            username="emp2", password="Pass1234!"
+        )
+
+    def test_admin_puede_listar_empleados(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.get("/api/authentication/users/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_empleado_no_puede_listar_usuarios(self):
+        self.client.force_authenticate(user=self.empleado)
+        response = self.client.get("/api/authentication/users/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_puede_actualizar_datos_de_empleado(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.patch(
+            f"/api/authentication/users/{self.empleado.id}/",
+            {"cargo": "Coordinador", "area": "Docencia"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.empleado.refresh_from_db()
+        self.assertEqual(self.empleado.cargo, "Coordinador")
+        self.assertEqual(self.empleado.area, "Docencia")
+
+    def test_admin_puede_eliminar_empleado(self):
+        self.client.force_authenticate(user=self.superuser)
+        response = self.client.delete(
+            f"/api/authentication/users/{self.empleado.id}/"
+        )
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(CustomUser.objects.filter(id=self.empleado.id).exists())
